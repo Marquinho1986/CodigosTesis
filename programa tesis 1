@@ -1,0 +1,135 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+
+int
+probEstimadaPatronOperacion ()
+{
+  if (rand () % 100 < 20)
+    {				// 20% de probabilidad para el patrC3n especC-fico
+      return 0;			// PatrC3n especC-fico ocurre
+    }
+  else
+    {
+      return 1;			// PatrC3n especC-fico no ocurre
+    }
+}
+
+void
+asignarNuevoLimiteSuperior (float *Ls, int longitud,
+			    float nuevoLimiteSuperior,
+			    float probabilidad_teorica)
+{
+  for (int i = 0; i < longitud; i += 4)
+    {
+      if (Ls[i] < nuevoLimiteSuperior && Ls[i + 2] != 0.0f && Ls[i] != -1)
+	{
+	  Ls[i + 2] = 0.0f;	// Asigna 0.0f
+	}
+      else if (Ls[i] > nuevoLimiteSuperior && Ls[i + 2] != 0.0f
+	       && Ls[i] != -1)
+	{
+	  Ls[i + 1]++;		// Incrementa Ls[i + 1]
+	}
+
+      if (i == longitud - 4 && Ls[i] == -1)
+	{
+	  Ls[i] = nuevoLimiteSuperior;	// Asigna nuevoLimiteSuperior a Ls[i + 1]
+	  Ls[i + 1] = 1.0f;	// Asigna 1.0f a Ls[i + 2]
+	  Ls[i + 2] = 1.0f;	// Asigna 1.0f a Ls[i + 3]
+	  Ls[i + 3] = fabs (nuevoLimiteSuperior - probabilidad_teorica);	// Calcula y asigna el valor absoluto
+	}
+    }
+}
+
+void
+asignarNuevoLimiteInferior (float *Li, int longitud,
+			    float nuevoLimiteInferior,
+			    float probabilidad_teorica)
+{
+  for (int i = 0; i < longitud; i += 4)
+    {
+      if (Li[i] > nuevoLimiteInferior && Li[i + 2] != 0.0f && Li[i] != 2)
+	{
+	  Li[i + 2] = 0.0f;
+	}
+      else if (Li[i] < nuevoLimiteInferior && Li[i + 2] != 0.0f && Li[i] != 2)
+	{
+	  Li[i + 1]++;
+	}
+
+      if (i == longitud - 4 && Li[i] == 2)
+	{
+	  Li[i + 0] = nuevoLimiteInferior;	// Asigna nuevoLimiteInferior a Li[i + 1]
+	  Li[i + 1] = 1.0f;	// Asigna 1.0f a Li[i + 2]
+	  Li[i + 2] = 1.0f;	// Asigna 1.0f a Li[i + 3]
+	  Li[i + 3] = fabs (nuevoLimiteInferior - probabilidad_teorica);	// Calcula y asigna el valor absoluto
+	}
+    }
+}
+
+void
+llenarConMenosUno (float *arr, int size)
+{
+  for (int i = 0; i < size; i++)
+    {
+      arr[i] = -1.0f;
+    }
+}
+
+void
+llenarConDos (float *arr, int size)
+{
+  for (int i = 0; i < size; i++)
+    {
+      arr[i] = 2.0f;
+    }
+}
+
+int
+main ()
+{
+  srand (time (NULL));		// InicializaciC3n del generador de nC:meros aleatorios
+
+  int num_experimentos = 100;
+  int num_grupos = 5;
+  int lanzamientos_por_grupo = 15;
+  float Ls[num_experimentos * num_grupos * 4];	// Ajuste del tamaC1o del arreglo
+  float Li[num_experimentos * num_grupos * 4];	// Ajuste del tamaC1o del arreglo
+  llenarConMenosUno (Ls, num_experimentos * num_grupos * 4);
+  llenarConDos (Li, num_experimentos * num_grupos * 4);
+
+  for (int experimento = 0; experimento < num_experimentos; experimento++)
+    {
+      printf ("Experimento %d:\n", experimento + 1);
+
+      for (int grupo = 0; grupo < num_grupos; grupo++)
+	{
+	  int conteoPatron = 0;
+
+	  for (int lanzamiento = 0; lanzamiento < lanzamientos_por_grupo;
+	       lanzamiento++)
+	    {
+	      if (probEstimadaPatronOperacion () == 0)
+		{
+		  conteoPatron++;
+		}
+	      int indice = (experimento * num_grupos + grupo) * 4;
+	      printf ("Grupo %d, Probabilidad Estimada: %f\n", grupo + 1,
+		      (float) conteoPatron / lanzamientos_por_grupo);
+	      asignarNuevoLimiteSuperior (&Ls, indice + 4,
+					  (float) conteoPatron /
+					  lanzamientos_por_grupo, 0.20f);
+	      asignarNuevoLimiteInferior (&Li, indice + 4,
+					  (float) conteoPatron /
+					  lanzamientos_por_grupo, 0.20f);
+	    }
+
+
+	}
+
+    }
+
+  return 0;
+}
