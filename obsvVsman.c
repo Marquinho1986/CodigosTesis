@@ -1,49 +1,89 @@
 #include <stdio.h>
 
 // Función Observador que modifica la población en función de la tasa modificada
-void observador(int poblacion,float tasa_modif, float tasa_teorica, float med_variacion, float k) {
-
-        if (tasa_modif <= media_teorica && med_variacion <= 0.5) {
-            poblacion -= 1;
-        }
-        if (tasa_modif <= 1.5 && media_teorica - tasa_modif >= 0.1) {
-            poblacion += 2;
-        }
-        if (tasa_modif > media_teorica && med_variacion > k) {
-            poblacion -= 1;
-        }
-        if (tasa_modif > media_teorica) {
-            poblacion += 1;
-        }
-        if (media_teorica - tasa_modif == 0.00) {
-            poblacion = 0;
-        }
+ int * observador(int *poblacion,float tasa_modif, float tasa_teorica,int base,int *Deltadiferencia) {
+      srand(time(NULL));
+      //float m = 0.1 + (rand() / (float)RAND_MAX) * 0.4;
+      //float k = 0.1 + (rand() / (float)RAND_MAX) * 0.4;
     
+        
+        if (tasa_modif > tasa_teorica &&  tasa_modif > = 0.1 && tasa_modif - tasa_teorica<= 0.3) {
+            (*poblacion) += 10000;
+        }
+        if (tasa_modif > tasa_teorica && tasa_modif - tasa_teorica >= 0.3) {
+            (*poblacion) += 100000;
+        }
+        if (tasa_modif < tasa_teorica && tasa_modif - tasa_teorica >= 0.1) {
+            Deltadiferencia++;
+            (*poblacion) -= 100000;
+            if (*poblacion < 0) *poblacion=base;
+        }
+       if (tasa_modif < tasa_teorica && tasa_modif - tasa_teorica >= 0.1 && *Deltadiferencia > 10) {
+            *Deltadiferencia=0
+            (*poblacion) -= 100000;
+            if (poblacion < 0) *poblacion=base;
+        }
+       if  (tasa_modif <= tasa_teorica && tasa_modif <= 0.1 && tasa_teorica - tasa_modif > 0.5 && tasa_teorica - tasa_modif <= 0.8) {
+            
+            *poblacion -= 0.8*poblacion;
+            
+            if (*poblacion < 0) *poblacion=base;
+            
+        }
+       if ( tasa_modif == 0) {
+            ContadortasaCero++;
+           if (ContadortasaCero == 3)
+            *poblacion== base;
+         }    
+      
+ return *poblacion;
 }
 
 // Función Manipulador que devuelve la tasa modificada
-double manipulador(int poblacion, int longitud, float tasa_anterior, double p, float tasa_teorica ) {
+ float manipulador(int *poblacion, double p, float tasa_teorica,int base ) {
     
-    double tasa_modificada = tasa_virgen * (suma_elementos / longitud) + p;
+    float tasa_modif;
+    float delta_tasa=0.1;
+    int limite objetivo=0,tope=10,disminuir=0;
     
-    return tasa_modificada;
+    if (poblacion <= p && limite objetivo < tope && disminuir !=0){ 
+    
+        tasa_modif = tasa_teorica + delta_tasa;
+        if (tasa_modif > 1) tasa_modif=1.0;
+        limite_objetivo++;
+     }
+      if (poblacion <= p && limite objetivo == tope && disminuir !=0){ 
+        
+        delta_tasa++;
+        limite_objetivo=0;
+     }
+     
+     if ((poblacion>=p || disminuir==1) && poblacion != base){
+       if ( disminuir==0){ 
+         
+          disminuir=1;
+       }
+        tasa_modif = tasa_teorica - delta_tasa;
+        if (tasa_modif < 0) tasa_modif=0;
+        limite_objetivo++;
+     }
+     
+return tasa_modif;
 }
-
 int main() {
     int longitud = 10; // Longitud de la población
-    int poblacion=400;
-    double tasa_virgen = 2.0; // Valor de la tasa virgen
-    double p = 0.5; // Objetivos de manipulación
-    
-    double media_teorica = 7.0; // Valor de la media teórica
-    double med_variacion = 0.4; // Valor de med_variacion
-    double k = 0.6; // Valor de k
+    int base=10000;
+    int poblacion=base;
+    int limite_manipulador=base*10
+    float tasa_teorica = 0.3; // Valor de la media teórica
+    float tasa_modificada;
+   
     
     // Llama al Manipulador para obtener la tasa modificada
-    double tasa_modificada = manipulador(poblacion, longitud, tasa_virgen, p);
+        tasa_modificada = manipulador(&poblacion,limite_manipulador,tasa_teorica,base);
     
     // Llama al Observador para modificar la población en función de las condiciones y la tasa modificada
-    observador(poblacion, longitud, tasa_modificada, media_teorica, med_variacion, k);
+        poblacion=observador(&poblacion,tasa_modificada, tasa_teorica,base);
     
     // Imprime la población resultante
     printf("Población modificada:\n");
