@@ -5,7 +5,7 @@
 void observador(int *poblacion, float *tasa_modif, float tasa_teorica, int base, int *Deltadiferencia) {
     float tasa_actual = *tasa_modif;
 
-    if (tasa_actual >= tasa_teorica && tasa_actual >= 0.1 && tasa_actual - tasa_teorica <= 0.3) {
+    if (tasa_actual > tasa_teorica && tasa_actual >= 0.1 && tasa_actual - tasa_teorica <= 0.3) {
         (*poblacion) += 10000;
     }
     if (tasa_actual > tasa_teorica && tasa_actual - tasa_teorica > 0.3) {
