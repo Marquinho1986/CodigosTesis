@@ -1,0 +1,38 @@
+#include <stdlib.h>  // Necesario para rand() y RAND_MAX
+
+int *observador(int *poblacion, float tasa_modif, float tasa_teorica, int base, int *Deltadiferencia) {
+    float diferencia = fabs(tasa_modif - tasa_teorica);
+    float random_event = (float)rand() / RAND_MAX;  // Genera un número aleatorio entre 0 y 1
+
+    // Decidir aleatoriamente entre crecimiento lineal, exponencial o decrecimiento
+    if (random_event < 0.3) {
+        // Crecimiento lineal moderado
+        *poblacion += (int)(100 * diferencia);
+    } else if (random_event < 0.6) {
+        // Crecimiento exponencial
+        *poblacion = (int)(*poblacion * (1.0 + diferencia * 0.5));
+    } else {
+        // Cambio dramático, tanto positivo como negativo
+        if (random_event < 0.8) {
+            *poblacion += (int)(200 * diferencia);
+        } else {
+            *poblacion -= (int)(200 * diferencia);
+        }
+    }
+
+    // Controlar los reseteos a la base
+    if (tasa_modif == 0) {
+        ContadortasaCero++;
+        if (ContadortasaCero >= 10) {  // Hacer más raro el reseteo
+            *poblacion = base;
+            ContadortasaCero = 0;
+        }
+    }
+
+    // Asegurarse de que la población no caiga por debajo de un mínimo viable
+    if (*poblacion < 10) {
+        *poblacion = (int)(base * 0.1);  // Resetear a un mínimo más viable en lugar de la base completa
+    }
+
+    return poblacion;
+}
