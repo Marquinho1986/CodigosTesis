@@ -1,0 +1,132 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+
+int ContadortasaCero = 0;  // Variable global para mantener el contador de tasa cero
+
+// Función que simula la probabilidad de un patrón específico
+int probEstimadaPatronOperacion() {
+    return rand() % 100 < 20 ? 0 : 1;  // 20% de probabilidad de ocurrencia
+}
+
+#include <stdlib.h>  // Necesario para rand() y RAND_MAX
+
+int *observador(int *poblacion, float tasa_modif, float tasa_teorica, int base, int *Deltadiferencia) {
+    float diferencia = fabs(tasa_modif - tasa_teorica);
+    float random_event = (float)rand() / RAND_MAX;  // Genera un número aleatorio entre 0 y 1
+
+    // Decidir aleatoriamente entre crecimiento lineal, exponencial o decrecimiento
+    if (random_event < 0.3) {
+        // Crecimiento lineal moderado
+        *poblacion += (int)(100 * diferencia);
+    } else if (random_event < 0.6) {
+        // Crecimiento exponencial
+        *poblacion = (int)(*poblacion * (1.0 + diferencia * 0.5));
+    } else {
+        // Cambio dramático, tanto positivo como negativo
+        if (random_event < 0.8) {
+            *poblacion += (int)(200 * diferencia);
+        } else {
+            *poblacion -= (int)(200 * diferencia);
+        }
+    }
+
+    // Controlar los reseteos a la base
+    if (tasa_modif == 0) {
+        ContadortasaCero++;
+        if (ContadortasaCero >= 10) {  // Hacer más raro el reseteo
+            *poblacion = base;
+            ContadortasaCero = 0;
+        }
+    }
+
+    // Asegurarse de que la población no caiga por debajo de un mínimo viable
+    if (*poblacion < 10) {
+        *poblacion = (int)(base * 0.1);  // Resetear a un mínimo más viable en lugar de la base completa
+    }
+
+    return poblacion;
+}
+
+
+
+float manipulador(int *poblacion, double p, float tasa_teorica, int base) {
+    static int cambiar_direccion = 0;  // Controla cuándo cambiar de incrementar a disminuir
+    static float delta_tasa = 0.1;  // Tasa de cambio inicial
+    float factor_aleatorio = (rand() % 100 - 50) / 500.0;  // Factor aleatorio entre -0.1 y 0.1
+    float tasa_modif = tasa_teorica;
+
+    // Determinar si es tiempo de cambiar la dirección del cambio de tasa
+    if (*poblacion < p && !cambiar_direccion) {
+        tasa_modif += delta_tasa + factor_aleatorio;  // Aumentar la tasa
+        if (tasa_modif > 1) tasa_modif = 1.0;  // Limitar la tasa al máximo de 1.0
+        cambiar_direccion = (*poblacion < base * 0.8);  // Cambiar dirección si la población es mucho menor que la base
+    } else {
+        tasa_modif -= delta_tasa + factor_aleatorio;  // Disminuir la tasa
+        if (tasa_modif < 0) tasa_modif = 0.0;  // No permitir tasas negativas
+        cambiar_direccion = (*poblacion > p * 1.2);  // Cambiar dirección si la población excede significativamente p
+    }
+
+    // Ajustar delta_tasa para la próxima iteración basada en condiciones actuales
+    delta_tasa = fmax(0.05, fmin(delta_tasa + ((rand() % 100 - 50) / 1000.0), 0.2));  // Mantener delta_tasa entre 0.05 y 0.2
+
+    return tasa_modif;
+}
+
+int main() {
+    srand(time(NULL));  // Inicialización del generador de números aleatorios
+
+    int num_experimentos = 100;
+    int num_grupos = 5;
+    int lanzamientos_por_grupo = 15;
+    int base_poblacion = 100; // Base para la población
+
+    // Arrays para poblaciones, deltas y tasas
+    int *poblaciones = malloc(num_experimentos * num_grupos * sizeof(int));
+    int *Deltas = malloc(num_experimentos * num_grupos * sizeof(int));
+    float *tasas = malloc(num_experimentos * num_grupos * sizeof(float)); // Array para almacenar tasas modificadas
+
+    // Inicializar poblaciones, deltas y tasas
+    for (int i = 0; i < num_experimentos * num_grupos; i++) {
+        poblaciones[i] = base_poblacion;
+        Deltas[i] = 0;
+        tasas[i] = 0.0;  // Inicializar las tasas a 0
+    }
+
+    // Ejecución de experimentos
+    for (int experimento = 0; experimento < num_experimentos; experimento++) {
+        for (int grupo = 0; grupo < num_grupos; grupo++) {
+            int conteoPatron = 0;
+            for (int lanzamiento = 0; lanzamiento < lanzamientos_por_grupo; lanzamiento++) {
+                conteoPatron += probEstimadaPatronOperacion() == 0 ? 1 : 0;
+            }
+            int indice = experimento * num_grupos + grupo;
+            float ratio = (float)conteoPatron / lanzamientos_por_grupo;
+            tasas[indice] = manipulador(&poblaciones[indice], ratio, 0.20, base_poblacion);
+            observador(&poblaciones[indice], tasas[indice], 0.20, base_poblacion, &Deltas[indice]);
+        }
+    }
+
+    // Impresión de la matriz de tasas modificadas
+    printf("Matriz de Tasas Modificadas:\n");
+    for (int experimento = 0; experimento < num_experimentos; experimento++) {
+        for (int grupo = 0; grupo < num_grupos; grupo++) {
+            int indice = experimento * num_grupos + grupo;
+            printf("%f ", tasas[indice]);
+        }
+        printf("\n");
+    }
+
+    // Impresión del vector de poblaciones
+    printf("\nVector de Poblaciones:\n");
+    for (int i = 0; i < num_experimentos * num_grupos; i++) {
+        printf("%d ", poblaciones[i]);
+        if ((i + 1) % num_grupos == 0) printf("\n"); // Nueva línea cada 'num_grupos' elementos para mejor legibilidad
+    }
+
+    free(poblaciones);
+    free(Deltas);
+    free(tasas);
+    return 0;
+}
