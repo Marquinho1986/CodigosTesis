@@ -1,0 +1,159 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+
+// Variable global para mantener el contador de tasa cero
+int ContadortasaCero = 0;
+
+// Función que simula la probabilidad de un patrón específico
+int probEstimadaPatronOperacion(float tasa_teorica) {
+    return rand() % 100 < (int)(tasa_teorica * 100) ? 0 : 1;  // Probabilidad de ocurrencia basada en tasa_teorica
+}
+
+// Función que modela el comportamiento del observador
+int *observador(int *n_pob, float tasa_modif, float tasa_teorica, int base) {
+    float diferencia = fabs(tasa_modif - tasa_teorica);
+    float random_event = (float)rand() / RAND_MAX;  // Genera un número aleatorio entre 0 y 1
+
+    // Decidir aleatoriamente entre crecimiento lineal, exponencial o decrecimiento
+    if (random_event < 0.3) {
+        *n_pob += (int)(100 * diferencia);
+    } else if (random_event < 0.6) {
+        *n_pob = (int)(*n_pob * (1.0 + diferencia * 0.5));
+    } else {
+        if (random_event < 0.8) {
+            *n_pob += (int)(200 * diferencia);
+        } else {
+            *n_pob -= (int)(200 * diferencia);
+        }
+    }
+
+    // Controlar los reseteos a la base
+    if (tasa_modif == 0) {
+        ContadortasaCero++;
+        if (ContadortasaCero >= 10) {
+            *n_pob = base;
+            ContadortasaCero = 0;
+        }
+    }
+
+    // Asegurarse de que la población no caiga por debajo de un mínimo viable
+    if (*n_pob < 10) {
+        *n_pob = (int)(base * 0.1);
+    }
+
+    return n_pob;
+}
+
+// Función que modela el comportamiento del manipulador
+float manipulador(int *n_pob, double p, float tasa_teorica, int base) {
+    static int cambiar_direccion = 0;
+    static float delta_tasa = 0.1;
+    float factor_aleatorio = (rand() % 100 - 50) / 500.0;
+    float tasa_modif = tasa_teorica;
+
+    if (*n_pob < p && !cambiar_direccion) {
+        tasa_modif += delta_tasa + factor_aleatorio;
+        if (tasa_modif > 1) tasa_modif = 1.0;
+        cambiar_direccion = (*n_pob < base * 0.8);
+    } else {
+        tasa_modif -= delta_tasa + factor_aleatorio;
+        if (tasa_modif < 0) tasa_modif = 0.0;
+        cambiar_direccion = (*n_pob > p * 1.2);
+    }
+
+    delta_tasa = fmax(0.05, fmin(delta_tasa + ((rand() % 100 - 50) / 1000.0), 0.2));
+
+    return tasa_modif;
+}
+
+// Función para intercambiar punteros
+void intercambiarPunteros(int **a, int **b) {
+    int *temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int main() {
+    srand(time(NULL));  // Inicialización del generador de números aleatorios
+
+    int num_patrones = 100;       // Número de patrones a analizar
+    int num_ventanas = 5;         // Número de ventanas por patrón
+    int elementos_por_ventana = 10; // Número de elementos por ventana
+    int eventos_por_elemento = 15;  // Número de eventos por cada elemento de la ventana
+    int base_n_pob = 100;         // Base para la población
+
+    int longitud_poblacion = num_ventanas * elementos_por_ventana;  // Longitud de la población por patrón
+
+    // Arreglos lineales para almacenar las poblaciones y tasas
+    int *poblacion_actual = malloc(longitud_poblacion * sizeof(int));
+    int *poblacion_base = malloc(longitud_poblacion * sizeof(int));
+    float *tasas = malloc(num_patrones * longitud_poblacion * sizeof(float));
+    float *tasas_teoricas = malloc(num_patrones * sizeof(float));  // Vector de tasas teóricas
+
+    // Inicializar la población base
+    for (int i = 0; i < longitud_poblacion; i++) {
+        poblacion_base[i] = base_n_pob;
+    }
+
+    // Inicializar tasas teóricas
+    for (int i = 0; i < num_patrones; i++) {
+        tasas_teoricas[i] = 0.20 + ((float)rand() / RAND_MAX) * 0.60;  // Asignar tasas teóricas aleatorias entre 0.20 y 0.80
+    }
+
+    // Ejecución de patrones
+    for (int patron = 0; patron < num_patrones; patron++) {
+        // Reasignar el puntero a la población base para resetear al inicio de cada patrón
+        int *n_pobs = poblacion_base;
+
+        // Cambiar a la población actual para operaciones de este patrón
+        intercambiarPunteros(&n_pobs, &poblacion_actual);
+
+        for (int ventana = 0; ventana < num_ventanas; ventana++) {
+            for (int elemento = 0; elemento < elementos_por_ventana; elemento++) {
+                int conteoPatron = 0;
+                for (int evento = 0; evento < eventos_por_elemento; evento++) {
+                    conteoPatron += probEstimadaPatronOperacion(tasas_teoricas[patron]) == 0 ? 1 : 0;
+                }
+                // Calcular la tasa de éxito para el elemento
+                float ratio = (float)conteoPatron / eventos_por_elemento;
+
+                // Calcular el índice lineal para almacenar la tasa del elemento
+                int indice_tasa = (patron * longitud_poblacion) + (ventana * elementos_por_ventana) + elemento;
+                tasas[indice_tasa] = manipulador(&poblacion_actual[ventana * elementos_por_ventana + elemento], ratio, tasas_teoricas[patron], base_n_pob);
+
+                // Usar la tasa modificada para ajustar la población
+                observador(&poblacion_actual[ventana * elementos_por_ventana + elemento], tasas[indice_tasa], tasas_teoricas[patron], base_n_pob);
+            }
+        }
+    }
+
+    // Impresión de la matriz de tasas modificadas
+    printf("Matriz de Tasas Modificadas:\n");
+    for (int patron = 0; patron < num_patrones; patron++) {
+        for (int ventana = 0; ventana < num_ventanas; ventana++) {
+            printf("Patron %d, Ventana %d: ", patron, ventana);
+            for (int elemento = 0; elemento < elementos_por_ventana; elemento++) {
+                int indice_tasa = (patron * longitud_poblacion) + (ventana * elementos_por_ventana) + elemento;
+                printf("%f ", tasas[indice_tasa]);
+            }
+            printf("\n");
+        }
+    }
+
+    // Impresión del vector de poblaciones (final después de todos los patrones)
+    printf("\nVector de Poblaciones (final después de todos los patrones):\n");
+    for (int i = 0; i < longitud_poblacion; i++) {
+        printf("%d ", poblacion_actual[i]);
+    }
+    printf("\n");
+
+    // Liberar la memoria asignada
+    free(poblacion_base);
+    free(poblacion_actual);
+    free(tasas);
+    free(tasas_teoricas);
+
+    return 0;
+}
